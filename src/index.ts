@@ -8,7 +8,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import * as dotenv from "dotenv";
 
-import { createSalesforceConnection } from "./utils/connection.js";
+import { executeWithRetry } from "./utils/connection.js";
+import { connectionManager } from "./utils/connectionManager.js";
+import { isTokenExpiredError, ConnectionError, formatAuthenticationError } from "./utils/errorHandler.js";
 import { SEARCH_OBJECTS, handleSearchObjects } from "./tools/search.js";
 import { DESCRIBE_OBJECT, handleDescribeObject } from "./tools/describe.js";
 import { QUERY_RECORDS, handleQueryRecords, QueryArgs } from "./tools/query.js";
@@ -65,19 +67,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     if (!args) throw new Error('Arguments are required');
 
-    const conn = await createSalesforceConnection();
+    // Extract user ID from request context if available (for personal OAuth)
+    const userId = (args as any).userId as string | undefined;
 
     switch (name) {
       case "salesforce_search_objects": {
         const { searchPattern } = args as { searchPattern: string };
         if (!searchPattern) throw new Error('searchPattern is required');
-        return await handleSearchObjects(conn, searchPattern);
+        
+        return await executeWithRetry(
+          async (conn) => await handleSearchObjects(conn, searchPattern),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_describe_object": {
         const { objectName } = args as { objectName: string };
         if (!objectName) throw new Error('objectName is required');
-        return await handleDescribeObject(conn, objectName);
+        
+        return await executeWithRetry(
+          async (conn) => await handleDescribeObject(conn, objectName),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_query_records": {
@@ -93,7 +106,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           orderBy: queryArgs.orderBy as string | undefined,
           limit: queryArgs.limit as number | undefined
         };
-        return await handleQueryRecords(conn, validatedArgs);
+        
+        return await executeWithRetry(
+          async (conn) => await handleQueryRecords(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_aggregate_query": {
@@ -111,7 +129,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           orderBy: aggregateArgs.orderBy as string | undefined,
           limit: aggregateArgs.limit as number | undefined
         };
-        return await handleAggregateQuery(conn, validatedArgs);
+        
+        return await executeWithRetry(
+          async (conn) => await handleAggregateQuery(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_dml_records": {
@@ -125,7 +148,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           records: dmlArgs.records as Record<string, any>[],
           externalIdField: dmlArgs.externalIdField as string | undefined
         };
-        return await handleDMLRecords(conn, validatedArgs);
+        
+        return await executeWithRetry(
+          async (conn) => await handleDMLRecords(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_manage_object": {
@@ -144,7 +172,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           nameFieldFormat: objectArgs.nameFieldFormat as string | undefined,
           sharingModel: objectArgs.sharingModel as 'ReadWrite' | 'Read' | 'Private' | 'ControlledByParent' | undefined
         };
-        return await handleManageObject(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleManageObject(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_manage_field": {
@@ -172,7 +204,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           description: fieldArgs.description as string | undefined,
           grantAccessTo: fieldArgs.grantAccessTo as string[] | undefined
         };
-        return await handleManageField(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleManageField(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_manage_field_permissions": {
@@ -188,7 +224,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           readable: permArgs.readable as boolean | undefined,
           editable: permArgs.editable as boolean | undefined
         };
-        return await handleManageFieldPermissions(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleManageFieldPermissions(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_search_all": {
@@ -219,7 +259,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           viewable: searchArgs.viewable as boolean | undefined
         };
 
-        return await handleSearchAll(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleSearchAll(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_read_apex": {
@@ -232,7 +276,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           includeMetadata: apexArgs.includeMetadata as boolean | undefined
         };
 
-        return await handleReadApex(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleReadApex(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_write_apex": {
@@ -249,7 +297,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           body: apexArgs.body as string
         };
 
-        return await handleWriteApex(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleWriteApex(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_read_apex_trigger": {
@@ -262,7 +314,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           includeMetadata: triggerArgs.includeMetadata as boolean | undefined
         };
 
-        return await handleReadApexTrigger(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleReadApexTrigger(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_write_apex_trigger": {
@@ -280,7 +336,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           body: triggerArgs.body as string
         };
 
-        return await handleWriteApexTrigger(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleWriteApexTrigger(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_execute_anonymous": {
@@ -295,7 +355,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           logLevel: executeArgs.logLevel as 'NONE' | 'ERROR' | 'WARN' | 'INFO' | 'DEBUG' | 'FINE' | 'FINER' | 'FINEST' | undefined
         };
 
-        return await handleExecuteAnonymous(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleExecuteAnonymous(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       case "salesforce_manage_debug_logs": {
@@ -315,7 +379,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           includeBody: debugLogsArgs.includeBody as boolean | undefined
         };
 
-        return await handleManageDebugLogs(conn, validatedArgs);
+        return await executeWithRetry(
+          async (conn) => await handleManageDebugLogs(conn, validatedArgs),
+          undefined,
+          userId
+        );
       }
 
       default:
@@ -325,10 +393,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
     }
   } catch (error) {
+    let errorMessage: string;
+    let requiresReauth = false;
+
+    if (error instanceof ConnectionError) {
+      errorMessage = error.message;
+      requiresReauth = error.requiresReauth;
+    } else if (isTokenExpiredError(error)) {
+      errorMessage = formatAuthenticationError(error);
+      requiresReauth = true;
+    } else {
+      errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
+    }
+
+    // Add re-authentication guidance if needed
+    if (requiresReauth) {
+      errorMessage += '\n\nTo re-authenticate:\n1. Update your connection configuration\n2. For personal OAuth, restart the authorization flow\n3. For client credentials, verify your client ID and secret';
+    }
+
     return {
       content: [{
         type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        text: errorMessage,
       }],
       isError: true,
     };

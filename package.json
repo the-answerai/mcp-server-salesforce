@@ -14,7 +14,9 @@
     "scripts": {
       "build": "tsc && shx chmod +x dist/*.js",
       "prepare": "npm run build",
-      "watch": "tsc --watch"
+      "watch": "tsc --watch",
+      "test:oauth": "node test-oauth-interactive.js",
+      "test:server": "node test-server.js"
     },
     "keywords": [
       "mcp",
