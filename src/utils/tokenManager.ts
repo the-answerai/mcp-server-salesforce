@@ -1,6 +1,9 @@
 import { TokenData } from '../types/connection.js';
 import https from 'https';
 import querystring from 'querystring';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * Manages OAuth token lifecycle including storage, refresh, and expiration handling
@@ -8,18 +11,92 @@ import querystring from 'querystring';
 export class TokenManager {
   private tokens = new Map<string, TokenData>();
   private refreshTimers = new Map<string, NodeJS.Timeout>();
+  private tokenFile: string;
+
+  constructor() {
+    // Store tokens in ~/.config/mcp-server-salesforce/tokens.json
+    const configDir = path.join(os.homedir(), '.config', 'mcp-server-salesforce');
+    this.tokenFile = path.join(configDir, 'tokens.json');
+    
+    // Ensure config directory exists
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true, mode: 0o700 }); // Only user readable/writable
+    }
+    
+    // Load existing tokens on startup
+    this.loadTokensFromFile();
+  }
+
+  /**
+   * Load tokens from persistent storage
+   */
+  private loadTokensFromFile(): void {
+    try {
+      if (fs.existsSync(this.tokenFile)) {
+        const data = fs.readFileSync(this.tokenFile, 'utf8');
+        const tokenData = JSON.parse(data);
+        
+        // Convert stored data back to TokenData objects
+        for (const [userId, token] of Object.entries(tokenData)) {
+          const tokenObj = token as any;
+          // Convert expiresAt back to Date object if it exists
+          if (tokenObj.expiresAt) {
+            tokenObj.expiresAt = new Date(tokenObj.expiresAt);
+          }
+          this.tokens.set(userId, tokenObj as TokenData);
+        }
+        
+        console.error(`Loaded ${this.tokens.size} stored tokens from ${this.tokenFile}`);
+      }
+    } catch (error) {
+      console.error('Failed to load tokens from file:', error);
+      // Continue with empty tokens if file is corrupted
+    }
+  }
+
+  /**
+   * Save tokens to persistent storage
+   */
+  private saveTokensToFile(): void {
+    try {
+      const tokenData: Record<string, any> = {};
+      
+      for (const [userId, token] of this.tokens.entries()) {
+        tokenData[userId] = {
+          ...token,
+          // Convert Date objects to strings for JSON storage
+          expiresAt: token.expiresAt?.toISOString()
+        };
+      }
+      
+      fs.writeFileSync(this.tokenFile, JSON.stringify(tokenData, null, 2), { 
+        mode: 0o600 // Only user readable/writable
+      });
+      
+      console.error(`Saved ${this.tokens.size} tokens to ${this.tokenFile}`);
+    } catch (error) {
+      console.error('Failed to save tokens to file:', error);
+    }
+  }
   private readonly TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes before expiry
 
   /**
    * Store token data for a user
    */
   async storeToken(userId: string, tokenData: TokenData): Promise<void> {
+    console.error(`STORING TOKEN for user: ${userId}`);
+    console.error(`Token data: ${JSON.stringify(tokenData, null, 2)}`);
+    
     this.tokens.set(userId, { ...tokenData, userId });
     
     // Schedule automatic refresh if expiration is known
     if (tokenData.expiresAt) {
       this.scheduleTokenRefresh(userId, tokenData.expiresAt);
     }
+    
+    // Persist to disk
+    console.error(`About to save tokens to file: ${this.tokenFile}`);
+    this.saveTokensToFile();
     
     console.error(`Token stored for user: ${userId}`);
   }
@@ -156,6 +233,9 @@ export class TokenManager {
       this.refreshTimers.delete(userId);
     }
     
+    // Persist to disk
+    this.saveTokensToFile();
+    
     console.error(`Token cleared for user: ${userId}`);
   }
 
@@ -264,6 +344,9 @@ export class TokenManager {
     
     // Clear all tokens
     this.tokens.clear();
+    
+    // Persist to disk
+    this.saveTokensToFile();
     
     console.error('TokenManager cleanup completed');
   }

@@ -13,17 +13,26 @@ export async function getUserInfo(connection: any): Promise<{
   displayName: string;
 } | null> {
   try {
+    console.error('Getting user info with connection...');
+    console.error('Connection instanceUrl:', connection.instanceUrl);
+    console.error('Connection accessToken:', connection.accessToken ? 'present' : 'missing');
+    
     // Use jsforce's identity() method to get user info - this is the correct way
     const identity = await connection.identity();
     
+    console.error('Identity response:', JSON.stringify(identity, null, 2));
+    
     if (identity) {
-      return {
+      const userInfo = {
         userId: identity.user_id,
         username: identity.username,
         email: identity.email || 'unknown',
         organizationId: identity.organization_id,
         displayName: identity.display_name || identity.username || 'Unknown User'
       };
+      
+      console.error('Extracted user info:', JSON.stringify(userInfo, null, 2));
+      return userInfo;
     }
     
     return null;
@@ -32,13 +41,16 @@ export async function getUserInfo(connection: any): Promise<{
     
     // Fallback to connection userInfo if identity() fails
     if (connection.userInfo) {
-      return {
+      const userInfo = {
         userId: connection.userInfo.id,
         username: connection.userInfo.username || 'unknown',
         email: connection.userInfo.email || 'unknown', 
         organizationId: connection.userInfo.organizationId || '',
         displayName: connection.userInfo.display_name || connection.userInfo.username || 'Unknown User'
       };
+      
+      console.error('Using fallback user info:', JSON.stringify(userInfo, null, 2));
+      return userInfo;
     }
     
     return null;

@@ -46,6 +46,10 @@ Notes:
       includeMetadata: {
         type: "boolean",
         description: "Whether to include metadata about the Apex classes"
+      },
+      accessToken: {
+        type: "string",
+        description: "Optional access token for personal OAuth authentication"
       }
     }
   }

@@ -54,6 +54,10 @@ Note: When using relationship fields:
         type: "number",
         description: "Maximum number of records to return",
         optional: true
+      },
+      accessToken: {
+        type: "string",
+        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["objectName", "fields"]

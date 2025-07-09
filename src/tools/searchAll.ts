@@ -120,6 +120,10 @@ Notes:
         type: "boolean",
         description: "Return only viewable records",
         optional: true
+      },
+      accessToken: {
+        type: "string",
+        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["searchTerm", "objects"]

@@ -17,15 +17,15 @@ export async function createSalesforceConnection(config?: ConnectionConfig, user
  * Execute an operation with automatic retry on token expiration
  * @param operation Function to execute with a connection
  * @param config Optional connection configuration
- * @param userId Optional user identifier
+ * @param accessToken Optional access token for direct authentication
  * @param maxRetries Maximum number of retry attempts
  * @returns Result of the operation
  */
 export async function executeWithRetry<T>(
   operation: (connection: any) => Promise<T>,
   config?: ConnectionConfig,
-  userId?: string,
+  accessToken?: string,
   maxRetries: number = 1
 ): Promise<T> {
-  return await connectionManager.executeWithRetry(operation, userId, config, maxRetries);
+  return await connectionManager.executeWithRetry(operation, accessToken, config, maxRetries);
 }

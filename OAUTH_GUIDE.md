@@ -2,9 +2,15 @@
 
 ## Overview
 
-The Salesforce MCP Server now supports robust OAuth token management with automatic refresh and personal authentication flows. This guide covers setup, usage, and testing.
+The Salesforce MCP Server implements the **MCP OAuth 2.1 standard** with robust token management, automatic refresh, and personal authentication flows. This guide covers setup, usage, and testing with MCP clients like MCP Inspector.
 
 ## 🚀 Features Implemented
+
+### ✅ **MCP OAuth 2.1 Standard Compliance**
+- OAuth discovery document at `/.well-known/oauth-authorization-server`
+- Standard OAuth endpoints and metadata for MCP client discovery
+- Support for PKCE (Proof Key for Code Exchange) with S256 method
+- Dynamic client registration capabilities
 
 ### ✅ **Refresh Token Graceful Failure**
 - Automatic token refresh using jsforce's built-in capabilities
@@ -15,6 +21,11 @@ The Salesforce MCP Server now supports robust OAuth token management with automa
 - Complete authorization code flow implementation
 - User-specific token management and storage
 - Support for personal Salesforce accounts alongside service accounts
+
+### ✅ **MCP Inspector Compatibility**
+- Works with MCP Inspector's "Auth" button for automatic OAuth flow
+- Standard OAuth discovery for seamless integration
+- Real-time token management and refresh
 
 ### ✅ **Tool Compatibility**
 - All 14 existing MCP tools updated with retry logic
@@ -39,12 +50,35 @@ export SALESFORCE_CLIENT_SECRET="your_client_secret"
 export SALESFORCE_INSTANCE_URL="https://your-domain.my.salesforce.com"
 ```
 
-### 3. **Personal OAuth** (New) ⭐
+### 3. **Personal OAuth** (MCP Standard) ⭐
 ```bash
 export SALESFORCE_CONNECTION_TYPE="OAuth_2.0_Personal"
 export SALESFORCE_CLIENT_ID="your_client_id"
 export SALESFORCE_CLIENT_SECRET="your_client_secret"
 export SALESFORCE_INSTANCE_URL="https://test.salesforce.com"
+export SALESFORCE_REDIRECT_URI="https://login.salesforce.com/services/oauth2/callback"
+```
+
+## 🔄 MCP OAuth Flow
+
+### How MCP Inspector Uses OAuth
+1. **Discovery**: MCP Inspector detects OAuth capabilities from server metadata
+2. **Authorization**: Clicks "Auth" button → redirects to Salesforce login
+3. **Consent**: User grants permissions to the MCP server
+4. **Token Exchange**: Authorization code is exchanged for access/refresh tokens
+5. **Resource Access**: All MCP tools now work with user's personal Salesforce data
+
+### OAuth Discovery Document
+The server exposes OAuth metadata that MCP clients can discover:
+```json
+{
+  "authorization_endpoint": "https://login.salesforce.com/services/oauth2/authorize",
+  "token_endpoint": "https://login.salesforce.com/services/oauth2/token",
+  "scopes_supported": ["api", "id", "refresh_token", "web", "full"],
+  "code_challenge_methods_supported": ["S256"],
+  "response_types_supported": ["code"],
+  "grant_types_supported": ["authorization_code", "client_credentials", "refresh_token"]
+}
 ```
 
 ## 🔗 Personal OAuth Setup

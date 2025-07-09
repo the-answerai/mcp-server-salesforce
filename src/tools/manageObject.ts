@@ -54,6 +54,10 @@ export const MANAGE_OBJECT: Tool = {
         enum: ["ReadWrite", "Read", "Private", "ControlledByParent"],
         description: "Sharing model for the object",
         optional: true
+      },
+      accessToken: {
+        type: "string",
+        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "objectName"]

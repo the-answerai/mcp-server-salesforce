@@ -48,6 +48,10 @@ Notes:
       body: {
         type: "string",
         description: "Full body of the Apex class"
+      },
+      accessToken: {
+        type: "string",
+        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "className", "body"]

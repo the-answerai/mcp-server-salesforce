@@ -4,6 +4,9 @@ import { ConnectionError } from '../utils/errorHandler.js';
 import { getUserInfo, generateUserId } from '../utils/userInfo.js';
 import jsforce from 'jsforce';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * OAuth authorization parameters
@@ -33,6 +36,63 @@ export interface OAuthCallback {
 export class PersonalOAuthHandler {
   private pendingStates = new Map<string, { timestamp: number; userId: string }>();
   private readonly STATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  private stateFile: string;
+
+  constructor() {
+    // Store states in ~/.config/mcp-server-salesforce/oauth_states.json
+    const configDir = path.join(os.homedir(), '.config', 'mcp-server-salesforce');
+    this.stateFile = path.join(configDir, 'oauth_states.json');
+    
+    // Ensure config directory exists
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+    }
+    
+    // Load existing states on startup
+    this.loadStatesFromFile();
+  }
+
+  /**
+   * Load states from persistent storage
+   */
+  private loadStatesFromFile(): void {
+    try {
+      if (fs.existsSync(this.stateFile)) {
+        const data = fs.readFileSync(this.stateFile, 'utf8');
+        const stateData = JSON.parse(data);
+        
+        // Convert stored data back to Map
+        for (const [state, info] of Object.entries(stateData)) {
+          this.pendingStates.set(state, info as { timestamp: number; userId: string });
+        }
+        
+        console.error(`Loaded ${this.pendingStates.size} OAuth states from ${this.stateFile}`);
+      }
+    } catch (error) {
+      console.error('Failed to load OAuth states from file:', error);
+    }
+  }
+
+  /**
+   * Save states to persistent storage
+   */
+  private saveStatesToFile(): void {
+    try {
+      const stateData: Record<string, any> = {};
+      
+      for (const [state, info] of this.pendingStates.entries()) {
+        stateData[state] = info;
+      }
+      
+      fs.writeFileSync(this.stateFile, JSON.stringify(stateData, null, 2), { 
+        mode: 0o600 // Only user readable/writable
+      });
+      
+      console.error(`Saved ${this.pendingStates.size} OAuth states to ${this.stateFile}`);
+    } catch (error) {
+      console.error('Failed to save OAuth states to file:', error);
+    }
+  }
 
   /**
    * Initiate OAuth authorization flow
@@ -49,6 +109,9 @@ export class PersonalOAuthHandler {
       timestamp: Date.now(),
       userId
     });
+    
+    // Persist to disk
+    this.saveStatesToFile();
 
     // Clean up expired states
     this.cleanupExpiredStates();
@@ -61,6 +124,92 @@ export class PersonalOAuthHandler {
     console.error(`OAuth flow initiated for user: ${userId}, state: ${state}`);
     
     return { authUrl, state };
+  }
+
+  /**
+   * Handle OAuth implicit flow callback (when access_token is provided directly)
+   */
+  async handleImplicitCallback(
+    accessToken: string,
+    state: string,
+    idUrl?: string
+  ): Promise<{ tokenData: TokenData; userId: string; userInfo: any }> {
+    console.error(`DEBUG: handleImplicitCallback called with state: ${state}`);
+    console.error(`DEBUG: Available states: ${Array.from(this.pendingStates.keys()).join(', ')}`);
+    
+    // Validate state parameter
+    const stateInfo = this.pendingStates.get(state);
+    if (!stateInfo) {
+      console.error(`DEBUG: State not found in pendingStates`);
+      throw new ConnectionError(
+        'Invalid or expired state parameter',
+        'INVALID_STATE'
+      );
+    }
+
+    // Check state timeout
+    const timeElapsed = Date.now() - stateInfo.timestamp;
+    console.error(`DEBUG: State age: ${timeElapsed}ms, timeout: ${this.STATE_TIMEOUT_MS}ms`);
+    if (timeElapsed > this.STATE_TIMEOUT_MS) {
+      this.pendingStates.delete(state);
+      throw new ConnectionError(
+        'OAuth state has expired, please restart the authorization flow',
+        'STATE_EXPIRED'
+      );
+    }
+
+    try {
+      // Clean up state
+      this.pendingStates.delete(state);
+      this.saveStatesToFile();
+
+      // Create token data (note: implicit flow doesn't provide refresh token)
+      const instanceUrl = process.env.SALESFORCE_INSTANCE_URL || 'https://login.salesforce.com';
+      
+      const tokenData: TokenData = {
+        accessToken: accessToken,
+        instanceUrl: instanceUrl,
+        expiresAt: new Date(Date.now() + 7200 * 1000) // Default 2 hours for implicit flow
+        // Note: No refresh token in implicit flow
+      };
+
+      // Get user info using the access token - create a temporary connection
+      const tempConnection = new jsforce.Connection({
+        instanceUrl: instanceUrl,
+        accessToken: accessToken
+      });
+      const userInfo = await getUserInfo(tempConnection);
+      if (!userInfo) {
+        throw new ConnectionError(
+          'Failed to retrieve user information with access token',
+          'USER_INFO_FAILED'
+        );
+      }
+      const actualUserId = userInfo.userId;
+
+      // Store tokens with the actual user ID
+      await tokenManager.storeToken(actualUserId, {
+        ...tokenData,
+        userId: actualUserId
+      });
+
+      console.error(`OAuth implicit callback processed successfully for user: ${actualUserId} (${userInfo.displayName})`);
+
+      return {
+        tokenData: {
+          ...tokenData,
+          userId: actualUserId
+        },
+        userId: actualUserId,
+        userInfo
+      };
+    } catch (error) {
+      console.error(`OAuth implicit callback processing failed for user: ${stateInfo.userId}`, error);
+      throw new ConnectionError(
+        `OAuth implicit callback failed: ${error instanceof Error ? error.message : String(error)}`,
+        'OAUTH_CALLBACK_FAILED'
+      );
+    }
   }
 
   /**

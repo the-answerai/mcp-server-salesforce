@@ -138,10 +138,26 @@ Manage debug logs for Salesforce users:
 * Configure log levels (NONE, ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST)
 * Example: "Enable debug logs for user@example.com" or "Retrieve recent logs for an admin user"
 
+### salesforce_oauth_initiate
+Initiate OAuth authentication flow for personal Salesforce accounts:
+* Generates authorization URL for user to visit
+* Creates secure state parameter for validation
+* Returns step-by-step instructions for OAuth flow
+* Required for Personal OAuth authentication with MCP clients
+* Example: "Start OAuth flow for my Salesforce account"
+
+### salesforce_oauth_callback
+Complete OAuth authentication with authorization code:
+* Exchanges authorization code for access and refresh tokens
+* Validates state parameter for security
+* Retrieves user information from Salesforce
+* Stores tokens for subsequent API calls
+* Example: "Complete OAuth with authorization code ABC123"
+
 ## Setup
 
 ### Salesforce Authentication
-You can connect to Salesforce using one of two authentication methods:
+You can connect to Salesforce using one of three authentication methods:
 
 #### 1. Username/Password Authentication (Default)
 1. Set up your Salesforce credentials
@@ -153,6 +169,15 @@ You can connect to Salesforce using one of two authentication methods:
 3. Set appropriate scopes (typically "api" is sufficient)
 4. Save the Client ID and Client Secret
 5. **Important**: Note your instance URL (e.g., `https://your-domain.my.salesforce.com`) as it's required for authentication
+
+#### 3. Personal OAuth Authentication (MCP Standard)
+The MCP server implements standard OAuth 2.1 authorization server capabilities with automatic discovery:
+
+1. Create a Connected App in Salesforce
+2. Enable OAuth settings with callback URL: `https://login.salesforce.com/services/oauth2/callback`
+3. Set OAuth scopes: `api`, `id`, `refresh_token`
+4. Save the Client ID and Client Secret
+5. MCP clients (like MCP Inspector) can discover and use OAuth automatically via the standard MCP OAuth flow
 
 ### Usage with Claude Desktop
 
@@ -195,7 +220,26 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-> **Note**: For OAuth 2.0 Client Credentials Flow, the `SALESFORCE_INSTANCE_URL` must be your exact Salesforce instance URL (e.g., `https://your-domain.my.salesforce.com`). The token endpoint will be constructed as `<instance_url>/services/oauth2/token`.
+#### For Personal OAuth Authentication:
+```json
+{
+  "mcpServers": {
+    "salesforce": {
+      "command": "npx",
+      "args": ["-y", "@tsmztech/mcp-server-salesforce"],
+      "env": {
+        "SALESFORCE_CONNECTION_TYPE": "OAuth_2.0_Personal",
+        "SALESFORCE_CLIENT_ID": "your_client_id",
+        "SALESFORCE_CLIENT_SECRET": "your_client_secret",
+        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com",  // REQUIRED: Your Salesforce instance URL
+        "SALESFORCE_REDIRECT_URI": "https://login.salesforce.com/services/oauth2/callback"  // Must match Connected App callback URL
+      }
+    }
+  }
+}
+```
+
+> **Note**: For OAuth flows, the `SALESFORCE_INSTANCE_URL` must be your exact Salesforce instance URL (e.g., `https://your-domain.my.salesforce.com`). For Personal OAuth, you'll need to authenticate once using the interactive setup script before using with MCP clients. Tokens are then managed automatically.
 
 ## Example Usage
 
@@ -288,6 +332,21 @@ Examples with Field Level Security:
 "Retrieve recent logs for an admin user"
 "Disable debug logs for a specific user"
 "Configure log level to DEBUG for a user"
+```
+
+### Personal OAuth with Access Tokens
+```
+# Pass access token directly to any tool
+"Query accounts using access token: 00D..."
+"Search objects with my personal access token"
+"Update records using OAuth token: 00D..."
+```
+
+### Direct Access Token Usage
+When using MCP clients that support OAuth, you can pass access tokens directly:
+```
+# Any tool can accept an optional accessToken parameter
+# The server will use the token directly without requiring environment setup
 ```
 
 ## Development
