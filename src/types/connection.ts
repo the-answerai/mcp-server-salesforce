@@ -21,8 +21,7 @@ export enum ConnectionType {
   OAuth_2_0_Authorization_Code = 'OAuth_2.0_Authorization_Code',
   
   /**
-   * Personal OAuth using stored refresh tokens
-   * For user-specific authentication with token persistence
+   * Personal OAuth for user-specific authentication
    */
   OAuth_2_0_Personal = 'OAuth_2.0_Personal'
 }

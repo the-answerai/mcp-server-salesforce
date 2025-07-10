@@ -1,7 +1,6 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
-import https from "https";
-import querystring from "querystring";
 import { ConnectionError } from "../utils/errorHandler.js";
+import { refreshToken } from "../utils/tokenManager.js";
 
 export const REFRESH_TOKEN: Tool = {
   name: "salesforce_refresh_token",
@@ -22,7 +21,7 @@ export const REFRESH_TOKEN: Tool = {
   }
 };
 
-export async function handleRefreshToken(refreshToken: string, instanceUrl?: string) {
+export async function handleRefreshToken(refreshTokenValue: string, instanceUrl?: string) {
   const clientId = process.env.SALESFORCE_CLIENT_ID;
   const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
   const effectiveInstanceUrl = instanceUrl || process.env.SALESFORCE_INSTANCE_URL || 'https://login.salesforce.com';
@@ -34,28 +33,24 @@ export async function handleRefreshToken(refreshToken: string, instanceUrl?: str
     );
   }
 
-  const tokenUrl = new URL('/services/oauth2/token', effectiveInstanceUrl);
-  const requestBody = querystring.stringify({
-    grant_type: 'refresh_token',
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken
-  });
-
   try {
-    const response = await makeTokenRequest(tokenUrl, requestBody);
+    const tokenData = await refreshToken(
+      refreshTokenValue,
+      clientId,
+      clientSecret,
+      effectiveInstanceUrl
+    );
     
     return {
       content: [{
         type: "text",
         text: JSON.stringify({
-          access_token: response.access_token,
-          token_type: response.token_type,
-          instance_url: response.instance_url,
-          signature: response.signature,
-          issued_at: response.issued_at,
-          scope: response.scope,
-          refresh_token: response.refresh_token || refreshToken // Use new refresh token if provided, otherwise keep original
+          access_token: tokenData.accessToken,
+          token_type: tokenData.tokenType,
+          instance_url: tokenData.instanceUrl,
+          scope: tokenData.scope,
+          refresh_token: tokenData.refreshToken,
+          expires_at: tokenData.expiresAt?.toISOString()
         }, null, 2)
       }],
       isError: false,
@@ -68,54 +63,3 @@ export async function handleRefreshToken(refreshToken: string, instanceUrl?: str
   }
 }
 
-/**
- * Make HTTP request for token refresh
- */
-async function makeTokenRequest(tokenUrl: URL, requestBody: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        method: 'POST',
-        hostname: tokenUrl.hostname,
-        path: tokenUrl.pathname,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(requestBody),
-        },
-      },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          try {
-            const parsedData = JSON.parse(data);
-            if (res.statusCode !== 200) {
-              reject(
-                new Error(`${parsedData.error}: ${parsedData.error_description}`)
-              );
-            } else {
-              resolve(parsedData);
-            }
-          } catch (e: unknown) {
-            reject(
-              new Error(
-                `Failed to parse token response: ${
-                  e instanceof Error ? e.message : String(e)
-                }`
-              )
-            );
-          }
-        });
-      }
-    );
-
-    req.on('error', (e) => {
-      reject(new Error(`Token request error: ${e.message}`));
-    });
-
-    req.write(requestBody);
-    req.end();
-  });
-}

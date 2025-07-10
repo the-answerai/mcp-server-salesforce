@@ -5,7 +5,7 @@ import {
   TokenData,
   PersonalOAuthConfig,
 } from "../types/connection.js";
-import { tokenManager } from "./tokenManager.js";
+import { isTokenExpired, exchangeCodeForTokens, refreshToken } from "./tokenManager.js";
 import {
   isTokenExpiredError,
   handleConnectionError,
@@ -162,7 +162,7 @@ export class ConnectionManager {
       // Exchange authorization code for tokens
       const instanceUrl =
         process.env.SALESFORCE_INSTANCE_URL || "https://login.salesforce.com";
-      tokenData = await tokenManager.exchangeCodeForTokens(
+      tokenData = await exchangeCodeForTokens(
         oauthConfig.authorizationCode,
         oauthConfig.clientId,
         oauthConfig.clientSecret,
@@ -176,8 +176,6 @@ export class ConnectionManager {
       );
     }
 
-    // Store token for future use
-    await tokenManager.storeToken(userId, tokenData);
 
     // Create jsforce connection with refresh capability
     const connection = new jsforce.Connection({
@@ -209,7 +207,6 @@ export class ConnectionManager {
     }`;
 
     this.connections.delete(cacheKey);
-    tokenManager.clearToken(effectiveUserId);
 
     console.error(`Connection cleared for user: ${effectiveUserId}`);
   }
@@ -220,7 +217,6 @@ export class ConnectionManager {
   clearAllConnections(): void {
     this.connections.clear();
     this.connectionPromises.clear();
-    tokenManager.cleanup();
 
     console.error("All connections cleared");
   }
@@ -228,10 +224,9 @@ export class ConnectionManager {
   /**
    * Get connection statistics
    */
-  getConnectionStats(): { activeConnections: number; storedTokens: number } {
+  getConnectionStats(): { activeConnections: number } {
     return {
       activeConnections: this.connections.size,
-      storedTokens: tokenManager.getStoredUserIds().length,
     };
   }
 
@@ -254,14 +249,7 @@ export class ConnectionManager {
 
     switch (connectionType) {
       case ConnectionType.OAuth_2_0_Personal:
-        // Check if we have stored tokens for this user first
-        const storedToken = await tokenManager.getToken(userId);
-        if (storedToken) {
-          console.error(`Using stored tokens for user: ${userId}`);
-          return await this.createTokenBasedConnection(storedToken, userId);
-        }
-
-        // If no stored tokens, require OAuth config
+        // Require OAuth config for personal OAuth flow
         if (!config?.personalOAuth) {
           throw new ConnectionError(
             "Personal OAuth configuration required " + JSON.stringify(config),
@@ -361,7 +349,7 @@ export class ConnectionManager {
     userId: string
   ): Promise<any> {
     // Check if token is expired
-    if (tokenManager.isTokenExpired(tokenData)) {
+    if (isTokenExpired(tokenData)) {
       throw new ConnectionError("Token is expired", "TOKEN_EXPIRED", true);
     }
 
@@ -397,8 +385,6 @@ export class ConnectionManager {
 
     const connection = new jsforce.Connection(connectionConfig);
 
-    // Store token for management
-    await tokenManager.storeToken(userId, tokenData);
 
     console.error("Token-based connection established");
     return connection;
@@ -454,10 +440,10 @@ export class ConnectionManager {
   ): void {
     // Set up refresh function
     if (connection.oauth2) {
-      connection.oauth2.refreshToken = async (refreshToken: string) => {
+      connection.oauth2.refreshToken = async (refreshTokenValue: string) => {
         try {
-          const newTokenData = await tokenManager.refreshToken(
-            userId,
+          const newTokenData = await refreshToken(
+            refreshTokenValue,
             oauthConfig.clientId,
             oauthConfig.clientSecret,
             connection.instanceUrl || "https://login.salesforce.com"
