@@ -72,6 +72,7 @@ import {
   ManageDebugLogsArgs,
 } from "./tools/manageDebugLogs.js";
 import { GET_OAUTH_METADATA, handleGetOAuthMetadata } from "./tools/oauthMetadata.js";
+import { REFRESH_TOKEN, handleRefreshToken } from "./tools/refreshToken.js";
 
 dotenv.config();
 
@@ -107,6 +108,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     EXECUTE_ANONYMOUS,
     MANAGE_DEBUG_LOGS,
     GET_OAUTH_METADATA,
+    REFRESH_TOKEN,
   ],
 }));
 
@@ -520,6 +522,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "get_oauth_metadata": {
         return await handleGetOAuthMetadata();
+      }
+
+      case "salesforce_refresh_token": {
+        const { refreshToken, instanceUrl } = args as { refreshToken: string; instanceUrl?: string };
+        if (!refreshToken) throw new Error("refreshToken is required");
+
+        return await handleRefreshToken(refreshToken, instanceUrl);
       }
 
       default:
