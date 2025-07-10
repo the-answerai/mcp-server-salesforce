@@ -158,10 +158,10 @@ You can connect to Salesforce using one of three authentication methods:
 For automated OAuth token management (recommended for personal use):
 
 1. Create a Connected App in Salesforce
-2. Enable OAuth settings with callback URL: `https://test.salesforce.com/services/oauth2/success`
+2. Enable OAuth settings (callback URL not required for server-side token refresh)
 3. Set OAuth scopes: `api`, `id`, `refresh_token`
 4. Save the Client ID and Client Secret
-5. Perform OAuth flow once to get a refresh token
+5. Perform OAuth flow once to get a refresh token (use any valid callback URL during initial setup)
 6. Configure the refresh token in environment variables - the server will automatically refresh access tokens as needed
 
 ### Usage with Claude Desktop
@@ -217,8 +217,7 @@ Add to your `claude_desktop_config.json`:
         "SALESFORCE_CLIENT_ID": "your_client_id",
         "SALESFORCE_CLIENT_SECRET": "your_client_secret",
         "SALESFORCE_REFRESH_TOKEN": "your_refresh_token",
-        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com",
-        "SALESFORCE_REDIRECT_URI": "https://test.salesforce.com/services/oauth2/success"
+        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com"
       }
     }
   }

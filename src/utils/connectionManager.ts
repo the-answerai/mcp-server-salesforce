@@ -363,16 +363,13 @@ export class ConnectionManager {
     if (tokenData.refreshToken) {
       const clientId = process.env.SALESFORCE_CLIENT_ID;
       const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
-      const redirectUri = process.env.SALESFORCE_REDIRECT_URI;
 
       if (clientId && clientSecret) {
         connectionConfig.refreshToken = tokenData.refreshToken;
         connectionConfig.oauth2 = {
           clientId: clientId,
           clientSecret: clientSecret,
-          redirectUri:
-            redirectUri ||
-            "https://login.salesforce.com/services/oauth2/callback",
+          redirectUri: "https://login.salesforce.com/services/oauth2/callback", // Default callback (not used for refresh)
         };
       } else {
         console.warn(

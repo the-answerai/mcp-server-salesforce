@@ -158,4 +158,3 @@ All 15 MCP tools support automatic server-side authentication:
 - `SALESFORCE_CLIENT_SECRET`: OAuth client secret (for token refresh)
 - `SALESFORCE_REFRESH_TOKEN`: Refresh token from initial OAuth flow
 - `SALESFORCE_INSTANCE_URL`: Salesforce instance URL
-- `SALESFORCE_REDIRECT_URI`: OAuth callback URL for Connected App (documentation only)
