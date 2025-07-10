@@ -71,8 +71,6 @@ import {
   handleManageDebugLogs,
   ManageDebugLogsArgs,
 } from "./tools/manageDebugLogs.js";
-import { GET_OAUTH_METADATA, handleGetOAuthMetadata } from "./tools/oauthMetadata.js";
-import { REFRESH_TOKEN, handleRefreshToken } from "./tools/refreshToken.js";
 
 dotenv.config();
 
@@ -107,8 +105,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     WRITE_APEX_TRIGGER,
     EXECUTE_ANONYMOUS,
     MANAGE_DEBUG_LOGS,
-    GET_OAUTH_METADATA,
-    REFRESH_TOKEN,
   ],
 }));
 
@@ -117,8 +113,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     if (!args) throw new Error("Arguments are required");
 
-    // Extract access token from request context if available (for personal OAuth)
-    const accessToken = (args as any).accessToken as string | undefined;
 
     switch (name) {
       case "salesforce_search_objects": {
@@ -126,8 +120,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!searchPattern) throw new Error("searchPattern is required");
 
         return await executeWithRetry(
-          async (conn) => await handleSearchObjects(conn, searchPattern),
-          { accessToken }
+          async (conn) => await handleSearchObjects(conn, searchPattern)
         );
       }
 
@@ -136,8 +129,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!objectName) throw new Error("objectName is required");
 
         return await executeWithRetry(
-          async (conn) => await handleDescribeObject(conn, objectName),
-          { accessToken }
+          async (conn) => await handleDescribeObject(conn, objectName)
         );
       }
 
@@ -156,8 +148,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleQueryRecords(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleQueryRecords(conn, validatedArgs)
         );
       }
 
@@ -184,8 +175,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleAggregateQuery(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleAggregateQuery(conn, validatedArgs)
         );
       }
 
@@ -212,8 +202,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleDMLRecords(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleDMLRecords(conn, validatedArgs)
         );
       }
 
@@ -244,8 +233,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             | undefined,
         };
         return await executeWithRetry(
-          async (conn) => await handleManageObject(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleManageObject(conn, validatedArgs)
         );
       }
 
@@ -287,8 +275,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           grantAccessTo: fieldArgs.grantAccessTo as string[] | undefined,
         };
         return await executeWithRetry(
-          async (conn) => await handleManageField(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleManageField(conn, validatedArgs)
         );
       }
 
@@ -313,8 +300,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
         return await executeWithRetry(
           async (conn) =>
-            await handleManageFieldPermissions(conn, validatedArgs),
-          { accessToken }
+            await handleManageFieldPermissions(conn, validatedArgs)
         );
       }
 
@@ -355,8 +341,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleSearchAll(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleSearchAll(conn, validatedArgs)
         );
       }
 
@@ -371,8 +356,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleReadApex(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleReadApex(conn, validatedArgs)
         );
       }
 
@@ -393,8 +377,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleWriteApex(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleWriteApex(conn, validatedArgs)
         );
       }
 
@@ -409,8 +392,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleReadApexTrigger(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleReadApexTrigger(conn, validatedArgs)
         );
       }
 
@@ -436,8 +418,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleWriteApexTrigger(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleWriteApexTrigger(conn, validatedArgs)
         );
       }
 
@@ -463,8 +444,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleExecuteAnonymous(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleExecuteAnonymous(conn, validatedArgs)
         );
       }
 
@@ -500,20 +480,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await executeWithRetry(
-          async (conn) => await handleManageDebugLogs(conn, validatedArgs),
-          { accessToken }
+          async (conn) => await handleManageDebugLogs(conn, validatedArgs)
         );
-      }
-
-      case "get_oauth_metadata": {
-        return await handleGetOAuthMetadata();
-      }
-
-      case "salesforce_refresh_token": {
-        const { refreshToken, instanceUrl } = args as { refreshToken: string; instanceUrl?: string };
-        if (!refreshToken) throw new Error("refreshToken is required");
-
-        return await handleRefreshToken(refreshToken, instanceUrl);
       }
 
       default:

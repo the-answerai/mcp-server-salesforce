@@ -16,10 +16,18 @@ import {
  * Options for executeWithRetry method
  */
 export interface ExecuteWithRetryOptions {
-  accessToken?: string;
   userId?: string;
   config?: ConnectionConfig;
   maxRetries?: number;
+}
+
+/**
+ * Cached token data for personal OAuth
+ */
+interface CachedToken {
+  accessToken: string;
+  expiresAt: Date;
+  refreshToken?: string;
 }
 import https from "https";
 import querystring from "querystring";
@@ -30,6 +38,7 @@ import querystring from "querystring";
 export class ConnectionManager {
   private connections = new Map<string, any>();
   private connectionPromises = new Map<string, Promise<any>>();
+  private tokenCache = new Map<string, CachedToken>();
   private readonly DEFAULT_USER_ID = "default_user";
 
   /**
@@ -92,6 +101,11 @@ export class ConnectionManager {
 
     // Remove existing connection
     this.connections.delete(cacheKey);
+    
+    // Clear cached tokens for personal OAuth
+    if (config?.type === ConnectionType.OAuth_2_0_Personal) {
+      this.clearCachedTokens(effectiveUserId);
+    }
 
     // Create fresh connection
     return await this.getConnection(effectiveUserId, config);
@@ -104,13 +118,7 @@ export class ConnectionManager {
     operation: (connection: any) => Promise<T>,
     options: ExecuteWithRetryOptions = {}
   ): Promise<T> {
-    const { accessToken, userId, config, maxRetries = 1 } = options;
-
-    // If access token is provided, use it directly
-    if (accessToken) {
-      const connection = await this.createDirectAccessTokenConnection(accessToken);
-      return await operation(connection);
-    }
+    const { userId, config, maxRetries = 1 } = options;
 
     let lastError: any;
 
@@ -249,17 +257,7 @@ export class ConnectionManager {
 
     switch (connectionType) {
       case ConnectionType.OAuth_2_0_Personal:
-        // Require OAuth config for personal OAuth flow
-        if (!config?.personalOAuth) {
-          throw new ConnectionError(
-            "Personal OAuth configuration required " + JSON.stringify(config),
-            "MISSING_OAUTH_CONFIG"
-          );
-        }
-        return await this.createPersonalOAuthConnection(
-          config.personalOAuth,
-          userId
-        );
+        return await this.createPersonalOAuthConnectionFromEnv(userId);
 
       case ConnectionType.OAuth_2_0_Authorization_Code:
         if (!config?.tokenData) {
@@ -549,6 +547,80 @@ export class ConnectionManager {
       req.write(requestBody);
       req.end();
     });
+  }
+
+  /**
+   * Create personal OAuth connection using environment variables and token caching
+   */
+  private async createPersonalOAuthConnectionFromEnv(userId: string): Promise<any> {
+    const clientId = process.env.SALESFORCE_CLIENT_ID;
+    const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
+    const refreshTokenValue = process.env.SALESFORCE_REFRESH_TOKEN;
+    const instanceUrl = process.env.SALESFORCE_INSTANCE_URL || "https://login.salesforce.com";
+
+    if (!clientId || !clientSecret || !refreshTokenValue) {
+      throw new ConnectionError(
+        "SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, and SALESFORCE_REFRESH_TOKEN are required for personal OAuth",
+        "MISSING_OAUTH_ENV_VARS"
+      );
+    }
+
+    // Check for cached valid token
+    const cacheKey = `personal_oauth_${userId}`;
+    const cachedToken = this.tokenCache.get(cacheKey);
+    
+    if (cachedToken && !this.isTokenExpiredSoon(cachedToken)) {
+      console.error(`Using cached access token for user: ${userId}`);
+      return new jsforce.Connection({
+        instanceUrl: instanceUrl,
+        accessToken: cachedToken.accessToken,
+      });
+    }
+
+    // Refresh token to get new access token
+    console.error(`Refreshing access token for user: ${userId}`);
+    const tokenData = await refreshToken(
+      refreshTokenValue,
+      clientId,
+      clientSecret,
+      instanceUrl
+    );
+
+    // Cache the new token
+    this.tokenCache.set(cacheKey, {
+      accessToken: tokenData.accessToken,
+      expiresAt: tokenData.expiresAt || new Date(Date.now() + 3600 * 1000), // Default 1 hour
+      refreshToken: tokenData.refreshToken || refreshTokenValue,
+    });
+
+    const connection = new jsforce.Connection({
+      instanceUrl: tokenData.instanceUrl,
+      accessToken: tokenData.accessToken,
+    });
+
+    console.error(`Personal OAuth connection created for user: ${userId}`);
+    return connection;
+  }
+
+  /**
+   * Check if token is expired or will expire soon (5 minute buffer)
+   */
+  private isTokenExpiredSoon(cachedToken: CachedToken): boolean {
+    const now = new Date();
+    const bufferMs = 5 * 60 * 1000; // 5 minutes
+    return now >= new Date(cachedToken.expiresAt.getTime() - bufferMs);
+  }
+
+  /**
+   * Clear cached tokens for a user
+   */
+  private clearCachedTokens(userId?: string): void {
+    if (userId) {
+      const cacheKey = `personal_oauth_${userId}`;
+      this.tokenCache.delete(cacheKey);
+    } else {
+      this.tokenCache.clear();
+    }
   }
 }
 

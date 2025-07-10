@@ -81,10 +81,6 @@ Important Rules:
         type: "number",
         description: "Maximum number of grouped results to return",
         optional: true
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["objectName", "selectFields", "groupByFields"]

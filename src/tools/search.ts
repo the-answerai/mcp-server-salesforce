@@ -10,10 +10,6 @@ export const SEARCH_OBJECTS: Tool = {
       searchPattern: {
         type: "string",
         description: "Search pattern to find objects (e.g., 'Account Coverage' will find objects like 'AccountCoverage__c')"
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["searchPattern"]

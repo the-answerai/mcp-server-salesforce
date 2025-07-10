@@ -53,10 +53,6 @@ Notes:
       body: {
         type: "string",
         description: "Full body of the Apex trigger"
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "triggerName", "body"]

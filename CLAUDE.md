@@ -32,13 +32,13 @@ This project uses npm for package management and requires Node.js with ES2022 mo
 The project follows a modular architecture with clear separation of concerns:
 
 - **`src/index.ts`**: Main MCP server entry point that registers all tools and handles routing
-- **`src/tools/`**: Individual tool implementations (17 Salesforce operations)
+- **`src/tools/`**: Individual tool implementations (15 Salesforce operations)
 - **`src/types/`**: TypeScript type definitions for connections, metadata, and Salesforce objects
 - **`src/utils/`**: Utility functions for connection management and error handling
 
 ### MCP Server Implementation
 The server is built on the `@modelcontextprotocol/sdk` and implements:
-- **Tool Registration**: All 17 tools are registered in `index.ts`
+- **Tool Registration**: All 15 tools are registered in `index.ts`
 - **Request Handling**: Centralized routing with type validation and object parameter support
 - **Error Handling**: Consistent error responses with Salesforce-specific details
 
@@ -46,8 +46,7 @@ The server is built on the `@modelcontextprotocol/sdk` and implements:
 Supports multiple authentication methods defined in `src/types/connection.ts`:
 1. **Username/Password**: Traditional Salesforce login with security token
 2. **OAuth 2.0 Client Credentials**: For server-to-server integrations
-3. **Personal OAuth**: User-specific authentication with access tokens
-4. **Direct Access Token**: Stateless authentication via access token parameter
+3. **Personal OAuth**: Server-side automatic token management with refresh tokens
 
 Connection logic is centralized in `src/utils/connectionManager.ts` with automatic retry and token refresh capabilities.
 
@@ -78,10 +77,6 @@ Connection logic is centralized in `src/utils/connectionManager.ts` with automat
 - **Execute Apex**: `salesforce_execute_anonymous` - Run anonymous Apex code
 - **Debug Logs**: `salesforce_manage_debug_logs` - Enable/disable/retrieve debug logs
 
-#### OAuth Support (2 tools)
-- **OAuth Metadata**: `salesforce_oauth_metadata` - Provides OAuth discovery metadata for MCP clients
-- **Refresh Token**: `salesforce_refresh_token` - Refresh expired access tokens using refresh tokens
-
 ## Key Implementation Details
 
 ### Type Safety
@@ -97,13 +92,13 @@ Centralized error handling in `src/utils/errorHandler.ts` provides Salesforce-sp
 Authentication is configured via environment variables:
 - Username/Password: `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_TOKEN`
 - OAuth 2.0: `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_INSTANCE_URL`
-- Access Token: All tools accept optional `accessToken` parameter for stateless authentication
+- Personal OAuth: `SALESFORCE_REFRESH_TOKEN` (server automatically manages access tokens)
 
 ## Development Notes
 
 ### Adding New Tools
 1. Create tool implementation in `src/tools/`
-2. Define argument types with optional `accessToken` parameter
+2. Define argument types (no accessToken parameter needed)
 3. Register tool in `src/index.ts` (both ListTools and CallTool handlers)
 4. Use `executeWithRetry` with object parameters for connection management
 5. Update README.md with tool documentation
@@ -111,8 +106,8 @@ Authentication is configured via environment variables:
 ### Testing Authentication
 You can test authentication methods by:
 1. Setting environment variables for username/password or client credentials
-2. Using the `salesforce_oauth_metadata` tool to get OAuth URLs
-3. Passing access tokens directly to any tool via the `accessToken` parameter
+2. For personal OAuth: Configure refresh token and connection type in environment
+3. Server automatically handles token management for all tools
 
 ### TypeScript Configuration
 - Target: ES2020
@@ -122,13 +117,13 @@ You can test authentication methods by:
 
 ## OAuth Implementation & Token Management
 
-### Stateless Authentication Architecture
-The server operates in a fully stateless mode with no persistent token storage:
+### Server-Side Token Management Architecture
+The server automatically manages OAuth tokens with caching and refresh capabilities:
 
-- **Direct Access Tokens**: All tools accept optional `accessToken` parameter
-- **URL Decoding**: Automatic handling of URL-encoded tokens from OAuth redirects
-- **Token Refresh**: Client-managed token refresh using dedicated tool
-- **OAuth Discovery**: Metadata endpoint for MCP client auto-discovery
+- **Automatic Token Refresh**: Server refreshes access tokens before each API call if needed
+- **Token Caching**: In-memory caching with expiration tracking (5-minute refresh buffer)
+- **Environment-Based Configuration**: Refresh token configured via environment variables
+- **Transparent Authentication**: All tools work without client-side token management
 
 ### Key Components
 
@@ -139,10 +134,10 @@ The server operates in a fully stateless mode with no persistent token storage:
 - HTTP-based token refresh operations
 
 #### Connection Management (`src/utils/connectionManager.ts`)
-- Stateless connection creation with connection pooling
-- Automatic retry logic on token expiration
-- Support for all authentication methods including direct access tokens
-- Object-based parameters for improved type safety (`ExecuteWithRetryOptions`)
+- Token caching with expiration tracking (`CachedToken` interface)
+- Automatic token refresh for personal OAuth connections
+- Connection pooling and automatic retry logic on token expiration
+- Environment-variable based OAuth configuration (`SALESFORCE_REFRESH_TOKEN`)
 
 #### Enhanced Error Handling (`src/utils/errorHandler.ts`)
 - Token expiration detection across multiple error patterns
@@ -151,14 +146,16 @@ The server operates in a fully stateless mode with no persistent token storage:
 - Clean error messages without stack traces
 
 ### Tool Integration
-All 17 MCP tools support the new stateless architecture:
-- Optional `accessToken` parameter in all tool schemas
-- Automatic retry logic with token refresh
+All 15 MCP tools support automatic server-side authentication:
+- No authentication parameters required in tool schemas
+- Automatic token refresh before each API call
 - Object-based parameter passing for better maintainability
-- Graceful handling of token expiration and URL encoding
+- Graceful handling of token expiration transparently
 
 ### Environment Variables
+- `SALESFORCE_CONNECTION_TYPE`: Set to `OAuth_2_0_Personal` for automatic token management
 - `SALESFORCE_CLIENT_ID`: OAuth client ID from Connected App
 - `SALESFORCE_CLIENT_SECRET`: OAuth client secret (for token refresh)
+- `SALESFORCE_REFRESH_TOKEN`: Refresh token from initial OAuth flow
 - `SALESFORCE_INSTANCE_URL`: Salesforce instance URL
-- `SALESFORCE_REDIRECT_URI`: OAuth callback URL for Connected App
+- `SALESFORCE_REDIRECT_URI`: OAuth callback URL for Connected App (documentation only)

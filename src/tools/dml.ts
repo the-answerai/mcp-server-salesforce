@@ -30,10 +30,6 @@ export const DML_RECORDS: Tool = {
         type: "string",
         description: "External ID field name for upsert operations",
         optional: true
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "objectName", "records"]

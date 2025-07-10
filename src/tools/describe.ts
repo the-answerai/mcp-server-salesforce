@@ -10,10 +10,6 @@ export const DESCRIBE_OBJECT: Tool = {
       objectName: {
         type: "string",
         description: "API name of the object (e.g., 'Account', 'Contact', 'Custom_Object__c')"
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["objectName"]

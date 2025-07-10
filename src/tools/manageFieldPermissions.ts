@@ -42,10 +42,6 @@ export const MANAGE_FIELD_PERMISSIONS: Tool = {
         type: "boolean",
         description: "Grant/revoke edit access (default: true)",
         optional: true
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "objectName", "fieldName"]

@@ -138,22 +138,6 @@ Manage debug logs for Salesforce users:
 * Configure log levels (NONE, ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST)
 * Example: "Enable debug logs for user@example.com" or "Retrieve recent logs for an admin user"
 
-### salesforce_oauth_metadata
-Provides OAuth 2.0 authorization server metadata for MCP clients:
-* Returns standardized OAuth discovery information
-* Supports implicit flow (response_type=token) for direct access token retrieval
-* Enables automatic OAuth flow initiation in MCP clients
-* Required for MCP clients to discover OAuth capabilities
-* Example: Used automatically by MCP Inspector and Claude Desktop for OAuth setup
-
-### salesforce_refresh_token
-Refresh an expired Salesforce access token:
-* Uses refresh token to obtain new access token
-* Maintains user session without re-authentication
-* Returns updated token data including expiration
-* Essential for long-running OAuth sessions
-* Example: "Refresh my Salesforce access token using refresh token xyz"
-
 ## Setup
 
 ### Salesforce Authentication
@@ -170,15 +154,15 @@ You can connect to Salesforce using one of three authentication methods:
 4. Save the Client ID and Client Secret
 5. **Important**: Note your instance URL (e.g., `https://your-domain.my.salesforce.com`) as it's required for authentication
 
-#### 3. Personal OAuth Authentication (Access Token)
-For direct access token authentication (recommended for MCP clients):
+#### 3. Personal OAuth Authentication (Server-Side Token Management)
+For automated OAuth token management (recommended for personal use):
 
 1. Create a Connected App in Salesforce
 2. Enable OAuth settings with callback URL: `https://test.salesforce.com/services/oauth2/success`
 3. Set OAuth scopes: `api`, `id`, `refresh_token`
-4. Save the Client ID and optionally Client Secret
-5. Use the OAuth metadata tool to get authorization URL or pass access tokens directly to any tool
-6. All tools support optional `accessToken` parameter for stateless authentication
+4. Save the Client ID and Client Secret
+5. Perform OAuth flow once to get a refresh token
+6. Configure the refresh token in environment variables - the server will automatically refresh access tokens as needed
 
 ### Usage with Claude Desktop
 
@@ -229,8 +213,10 @@ Add to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@tsmztech/mcp-server-salesforce"],
       "env": {
+        "SALESFORCE_CONNECTION_TYPE": "OAuth_2_0_Personal",
         "SALESFORCE_CLIENT_ID": "your_client_id",
         "SALESFORCE_CLIENT_SECRET": "your_client_secret",
+        "SALESFORCE_REFRESH_TOKEN": "your_refresh_token",
         "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com",
         "SALESFORCE_REDIRECT_URI": "https://test.salesforce.com/services/oauth2/success"
       }
@@ -239,7 +225,7 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-> **Note**: The server operates in a stateless mode. Access tokens are passed directly to tools as needed, and OAuth metadata is provided for MCP client discovery. Use the `salesforce_oauth_metadata` tool to get authorization URLs, and pass access tokens to any tool using the `accessToken` parameter.
+> **Note**: The server automatically manages access tokens using the configured refresh token. Before each API call, it will refresh the access token if needed, ensuring all operations have valid authentication. No client-side token management is required.
 
 ## Example Usage
 
@@ -334,27 +320,19 @@ Examples with Field Level Security:
 "Configure log level to DEBUG for a user"
 ```
 
-### OAuth Authentication and Token Management
+### Automatic OAuth Authentication
+When using Personal OAuth (OAuth_2_0_Personal connection type):
 ```
-# Get OAuth authorization URL
-"Get Salesforce OAuth metadata for authentication"
+# All tools work seamlessly without additional parameters
+"Query all accounts"
+"Search for objects related to Customer"
+"Update opportunity records"
+"Get field information for the Account object"
 
-# Refresh expired tokens
-"Refresh my Salesforce access token using refresh token xyz123"
-
-# Use access tokens directly with any tool
-"Query accounts using access token: 00D..."
-"Search objects with my personal access token"
-"Update records using OAuth token: 00D..."
-```
-
-### Direct Access Token Usage
-All tools support stateless authentication via access tokens:
-```
-# Any tool accepts an optional accessToken parameter
-# No environment setup required - tokens passed directly
-# Automatic URL decoding handles OAuth redirect tokens
-# Supports both encoded (%21) and plain (!) token formats
+# The server automatically:
+# - Refreshes access tokens before each API call if needed
+# - Handles token expiration transparently
+# - Manages all OAuth complexity server-side
 ```
 
 ## Development

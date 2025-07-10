@@ -42,10 +42,6 @@ Notes:
         type: "string",
         enum: ["NONE", "ERROR", "WARN", "INFO", "DEBUG", "FINE", "FINER", "FINEST"],
         description: "Log level for debug logs (optional, defaults to DEBUG)"
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["apexCode"]

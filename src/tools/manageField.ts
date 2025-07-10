@@ -112,10 +112,6 @@ export const MANAGE_FIELD: Tool = {
         items: { type: "string" },
         description: "Profile names to grant field access to (defaults to ['System Administrator'])",
         optional: true
-      },
-      accessToken: {
-        type: "string",
-        description: "Optional access token for personal OAuth authentication"
       }
     },
     required: ["operation", "objectName", "fieldName"]
