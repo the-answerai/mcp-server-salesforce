@@ -138,21 +138,21 @@ Manage debug logs for Salesforce users:
 * Configure log levels (NONE, ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST)
 * Example: "Enable debug logs for user@example.com" or "Retrieve recent logs for an admin user"
 
-### salesforce_oauth_initiate
-Initiate OAuth authentication flow for personal Salesforce accounts:
-* Generates authorization URL for user to visit
-* Creates secure state parameter for validation
-* Returns step-by-step instructions for OAuth flow
-* Required for Personal OAuth authentication with MCP clients
-* Example: "Start OAuth flow for my Salesforce account"
+### salesforce_oauth_metadata
+Provides OAuth 2.0 authorization server metadata for MCP clients:
+* Returns standardized OAuth discovery information
+* Supports implicit flow (response_type=token) for direct access token retrieval
+* Enables automatic OAuth flow initiation in MCP clients
+* Required for MCP clients to discover OAuth capabilities
+* Example: Used automatically by MCP Inspector and Claude Desktop for OAuth setup
 
-### salesforce_oauth_callback
-Complete OAuth authentication with authorization code:
-* Exchanges authorization code for access and refresh tokens
-* Validates state parameter for security
-* Retrieves user information from Salesforce
-* Stores tokens for subsequent API calls
-* Example: "Complete OAuth with authorization code ABC123"
+### salesforce_refresh_token
+Refresh an expired Salesforce access token:
+* Uses refresh token to obtain new access token
+* Maintains user session without re-authentication
+* Returns updated token data including expiration
+* Essential for long-running OAuth sessions
+* Example: "Refresh my Salesforce access token using refresh token xyz"
 
 ## Setup
 
@@ -170,14 +170,15 @@ You can connect to Salesforce using one of three authentication methods:
 4. Save the Client ID and Client Secret
 5. **Important**: Note your instance URL (e.g., `https://your-domain.my.salesforce.com`) as it's required for authentication
 
-#### 3. Personal OAuth Authentication (MCP Standard)
-The MCP server implements standard OAuth 2.1 authorization server capabilities with automatic discovery:
+#### 3. Personal OAuth Authentication (Access Token)
+For direct access token authentication (recommended for MCP clients):
 
 1. Create a Connected App in Salesforce
-2. Enable OAuth settings with callback URL: `https://login.salesforce.com/services/oauth2/callback`
+2. Enable OAuth settings with callback URL: `https://test.salesforce.com/services/oauth2/success`
 3. Set OAuth scopes: `api`, `id`, `refresh_token`
-4. Save the Client ID and Client Secret
-5. MCP clients (like MCP Inspector) can discover and use OAuth automatically via the standard MCP OAuth flow
+4. Save the Client ID and optionally Client Secret
+5. Use the OAuth metadata tool to get authorization URL or pass access tokens directly to any tool
+6. All tools support optional `accessToken` parameter for stateless authentication
 
 ### Usage with Claude Desktop
 
@@ -228,18 +229,17 @@ Add to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@tsmztech/mcp-server-salesforce"],
       "env": {
-        "SALESFORCE_CONNECTION_TYPE": "OAuth_2.0_Personal",
         "SALESFORCE_CLIENT_ID": "your_client_id",
         "SALESFORCE_CLIENT_SECRET": "your_client_secret",
-        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com",  // REQUIRED: Your Salesforce instance URL
-        "SALESFORCE_REDIRECT_URI": "https://login.salesforce.com/services/oauth2/callback"  // Must match Connected App callback URL
+        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com",
+        "SALESFORCE_REDIRECT_URI": "https://test.salesforce.com/services/oauth2/success"
       }
     }
   }
 }
 ```
 
-> **Note**: For OAuth flows, the `SALESFORCE_INSTANCE_URL` must be your exact Salesforce instance URL (e.g., `https://your-domain.my.salesforce.com`). For Personal OAuth, you'll need to authenticate once using the interactive setup script before using with MCP clients. Tokens are then managed automatically.
+> **Note**: The server operates in a stateless mode. Access tokens are passed directly to tools as needed, and OAuth metadata is provided for MCP client discovery. Use the `salesforce_oauth_metadata` tool to get authorization URLs, and pass access tokens to any tool using the `accessToken` parameter.
 
 ## Example Usage
 
@@ -334,19 +334,27 @@ Examples with Field Level Security:
 "Configure log level to DEBUG for a user"
 ```
 
-### Personal OAuth with Access Tokens
+### OAuth Authentication and Token Management
 ```
-# Pass access token directly to any tool
+# Get OAuth authorization URL
+"Get Salesforce OAuth metadata for authentication"
+
+# Refresh expired tokens
+"Refresh my Salesforce access token using refresh token xyz123"
+
+# Use access tokens directly with any tool
 "Query accounts using access token: 00D..."
 "Search objects with my personal access token"
 "Update records using OAuth token: 00D..."
 ```
 
 ### Direct Access Token Usage
-When using MCP clients that support OAuth, you can pass access tokens directly:
+All tools support stateless authentication via access tokens:
 ```
-# Any tool can accept an optional accessToken parameter
-# The server will use the token directly without requiring environment setup
+# Any tool accepts an optional accessToken parameter
+# No environment setup required - tokens passed directly
+# Automatic URL decoding handles OAuth redirect tokens
+# Supports both encoded (%21) and plain (!) token formats
 ```
 
 ## Development
