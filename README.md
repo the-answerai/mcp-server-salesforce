@@ -339,7 +339,7 @@ When using Personal OAuth (OAuth_2_0_Personal connection type):
 ### Building from source
 ```bash
 # Clone the repository
-git clone https://github.com/answerai/mcp-server-salesforce.git
+git clone https://github.com/the-answerai/mcp-server-salesforce.git
 
 # Navigate to directory
 cd mcp-server-salesforce
@@ -358,4 +358,4 @@ Contributions are welcome! Feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Issues and Support
-If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/answerai/mcp-server-salesforce/issues).
+If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/the-answerai/mcp-server-salesforce/issues).
