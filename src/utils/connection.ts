@@ -1,6 +1,6 @@
 import type { Connection } from "jsforce";
 import { ConnectionType, ConnectionConfig } from '../types/connection.js';
-import { connectionManager } from './connectionManager.js';
+import { connectionManager, ExecuteWithRetryOptions } from './connectionManager.js';
 
 /**
  * Creates a Salesforce connection using the ConnectionManager
@@ -16,16 +16,12 @@ export async function createSalesforceConnection(config?: ConnectionConfig, user
 /**
  * Execute an operation with automatic retry on token expiration
  * @param operation Function to execute with a connection
- * @param config Optional connection configuration
- * @param accessToken Optional access token for direct authentication
- * @param maxRetries Maximum number of retry attempts
+ * @param options Optional configuration for retry behavior
  * @returns Result of the operation
  */
 export async function executeWithRetry<T>(
   operation: (connection: any) => Promise<T>,
-  config?: ConnectionConfig,
-  accessToken?: string,
-  maxRetries: number = 1
+  options?: ExecuteWithRetryOptions
 ): Promise<T> {
-  return await connectionManager.executeWithRetry(operation, accessToken, config, maxRetries);
+  return await connectionManager.executeWithRetry(operation, options);
 }

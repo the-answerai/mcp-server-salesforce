@@ -35,32 +35,6 @@ export class PersonalOAuthHandler {
     // Stateless OAuth handler - client manages state
   }
 
-  /**
-   * Generate authorization URL for OAuth flow
-   */
-  getAuthorizationUrl(params: AuthParams): string {
-    const baseUrl = params.instanceUrl || 'https://login.salesforce.com';
-    const authUrl = new URL('/services/oauth2/authorize', baseUrl);
-    
-    // Required parameters
-    authUrl.searchParams.set('response_type', 'token');
-    authUrl.searchParams.set('client_id', params.clientId);
-    authUrl.searchParams.set('redirect_uri', params.redirectUri);
-    
-    // Set default scope for personal OAuth if not provided
-    const defaultScope = 'id api refresh_token';
-    authUrl.searchParams.set('scope', params.scope || defaultScope);
-    
-    if (params.state) {
-      authUrl.searchParams.set('state', params.state);
-    }
-    
-    if (params.prompt) {
-      authUrl.searchParams.set('prompt', params.prompt);
-    }
-
-    return authUrl.toString();
-  }
 
   /**
    * Handle OAuth implicit flow callback (when access_token is provided directly)

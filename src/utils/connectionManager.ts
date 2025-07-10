@@ -11,6 +11,16 @@ import {
   handleConnectionError,
   ConnectionError,
 } from "./errorHandler.js";
+
+/**
+ * Options for executeWithRetry method
+ */
+export interface ExecuteWithRetryOptions {
+  accessToken?: string;
+  userId?: string;
+  config?: ConnectionConfig;
+  maxRetries?: number;
+}
 import https from "https";
 import querystring from "querystring";
 
@@ -92,19 +102,16 @@ export class ConnectionManager {
    */
   async executeWithRetry<T>(
     operation: (connection: any) => Promise<T>,
-    userIdOrAccessToken?: string,
-    config?: ConnectionConfig,
-    maxRetries: number = 1
+    options: ExecuteWithRetryOptions = {}
   ): Promise<T> {
-    // If the first parameter looks like an access token, use it directly
-    if (userIdOrAccessToken && this.isAccessToken(userIdOrAccessToken)) {
-      const connection = await this.createDirectAccessTokenConnection(
-        userIdOrAccessToken
-      );
+    const { accessToken, userId, config, maxRetries = 1 } = options;
+
+    // If access token is provided, use it directly
+    if (accessToken) {
+      const connection = await this.createDirectAccessTokenConnection(accessToken);
       return await operation(connection);
     }
 
-    const userId = userIdOrAccessToken;
     let lastError: any;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -191,26 +198,6 @@ export class ConnectionManager {
     return connection;
   }
 
-  /**
-   * Get authorization URL for personal OAuth flow
-   */
-  getAuthorizationUrl(
-    clientId: string,
-    redirectUri: string,
-    state: string,
-    instanceUrl?: string
-  ): string {
-    const baseUrl = instanceUrl || "https://login.salesforce.com";
-    const authUrl = new URL("/services/oauth2/authorize", baseUrl);
-
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("client_id", clientId);
-    authUrl.searchParams.set("redirect_uri", redirectUri);
-    authUrl.searchParams.set("state", state);
-    authUrl.searchParams.set("scope", "api refresh_token");
-
-    return authUrl.toString();
-  }
 
   /**
    * Clear connection for a user

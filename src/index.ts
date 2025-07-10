@@ -127,8 +127,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleSearchObjects(conn, searchPattern),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -138,8 +137,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleDescribeObject(conn, objectName),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -159,8 +157,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleQueryRecords(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -188,8 +185,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleAggregateQuery(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -217,8 +213,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleDMLRecords(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -250,8 +245,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
         return await executeWithRetry(
           async (conn) => await handleManageObject(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -294,8 +288,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
         return await executeWithRetry(
           async (conn) => await handleManageField(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -321,8 +314,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await executeWithRetry(
           async (conn) =>
             await handleManageFieldPermissions(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -364,8 +356,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleSearchAll(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -381,8 +372,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleReadApex(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -404,8 +394,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleWriteApex(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -421,8 +410,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleReadApexTrigger(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -449,8 +437,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleWriteApexTrigger(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -477,8 +464,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleExecuteAnonymous(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
@@ -515,8 +501,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleManageDebugLogs(conn, validatedArgs),
-          undefined,
-          accessToken
+          { accessToken }
         );
       }
 
