@@ -18,6 +18,7 @@ import {
 import { SEARCH_OBJECTS, handleSearchObjects } from "./tools/search.js";
 import { DESCRIBE_OBJECT, handleDescribeObject } from "./tools/describe.js";
 import { CASE_REQUIRED_FIELDS, handleCaseRequiredFields } from "./tools/caseRequiredFields.js";
+import { INSERT_CASE, handleInsertCase, InsertCaseArgs } from "./tools/insertCase.js";
 import { QUERY_RECORDS, handleQueryRecords, QueryArgs } from "./tools/query.js";
 import {
   AGGREGATE_QUERY,
@@ -94,6 +95,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     SEARCH_OBJECTS,
     DESCRIBE_OBJECT,
     CASE_REQUIRED_FIELDS,
+    INSERT_CASE,
     QUERY_RECORDS,
     AGGREGATE_QUERY,
     DML_RECORDS,
@@ -138,6 +140,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "salesforce_case_required_fields": {
         return await executeWithRetry(
           async (conn) => await handleCaseRequiredFields(conn)
+        );
+      }
+
+      case "salesforce_insert_case": {
+        const insertArgs = args as Record<string, unknown>;
+        if (!Array.isArray(insertArgs.records)) {
+          throw new Error("records array is required for Case insertion");
+        }
+        const validatedArgs: InsertCaseArgs = {
+          records: insertArgs.records as Record<string, any>[]
+        };
+
+        return await executeWithRetry(
+          async (conn) => await handleInsertCase(conn, validatedArgs)
         );
       }
 
