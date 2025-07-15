@@ -17,6 +17,7 @@ import {
 } from "./utils/errorHandler.js";
 import { SEARCH_OBJECTS, handleSearchObjects } from "./tools/search.js";
 import { DESCRIBE_OBJECT, handleDescribeObject } from "./tools/describe.js";
+import { CASE_REQUIRED_FIELDS, handleCaseRequiredFields } from "./tools/caseRequiredFields.js";
 import { QUERY_RECORDS, handleQueryRecords, QueryArgs } from "./tools/query.js";
 import {
   AGGREGATE_QUERY,
@@ -92,6 +93,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     SEARCH_OBJECTS,
     DESCRIBE_OBJECT,
+    CASE_REQUIRED_FIELDS,
     QUERY_RECORDS,
     AGGREGATE_QUERY,
     DML_RECORDS,
@@ -130,6 +132,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return await executeWithRetry(
           async (conn) => await handleDescribeObject(conn, objectName)
+        );
+      }
+
+      case "salesforce_case_required_fields": {
+        return await executeWithRetry(
+          async (conn) => await handleCaseRequiredFields(conn)
         );
       }
 
