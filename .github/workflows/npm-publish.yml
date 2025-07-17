@@ -1,0 +1,147 @@
+name: NPM Publish
+
+on:
+  push:
+    branches: [ main, master ]
+  release:
+    types: [ created ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version to publish (optional)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Note: Uncomment this step when tests are added to the project
+      # - name: Run tests
+      #   run: npm test
+
+      - name: Determine version bump
+        id: version_bump
+        if: github.event_name == 'push'
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"%s" HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"%s" ${LAST_TAG}..HEAD)
+          fi
+          
+          echo "Analyzing commits:"
+          echo "$COMMITS"
+          
+          # Determine bump type based on commit messages
+          BUMP_TYPE="patch"
+          if echo "$COMMITS" | grep -i -E "(BREAKING CHANGE|MAJOR)" > /dev/null; then
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -i -E "(feat|feature|minor)" > /dev/null; then
+            BUMP_TYPE="minor"
+          fi
+          
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Determined bump type: $BUMP_TYPE"
+
+      - name: Update package version
+        id: version_update
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # Manual version specified
+            NEW_VERSION="${{ github.event.inputs.version }}"
+            npm version $NEW_VERSION --no-git-tag-version
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            # Use release tag version
+            NEW_VERSION="${{ github.event.release.tag_name }}"
+            NEW_VERSION=${NEW_VERSION#v}  # Remove 'v' prefix if present
+            npm version $NEW_VERSION --no-git-tag-version
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            # Auto-bump based on commits
+            BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
+            NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version)
+            NEW_VERSION=${NEW_VERSION#v}  # Remove 'v' prefix
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Updated version to: $NEW_VERSION"
+
+      - name: Prepare package for publishing
+        run: |
+          # Ensure proper package configuration for publishing
+          node -e "
+            const pkg = require('./package.json');
+            pkg.name = '@answerai/mcp-server-salesforce';
+            pkg.publishConfig = { access: 'public' };
+            pkg.repository = {
+              type: 'git',
+              url: 'git+https://github.com/bradtaylor/mcp-server-salesforce.git'
+            };
+            pkg.homepage = 'https://github.com/bradtaylor/mcp-server-salesforce#readme';
+            pkg.bugs = {
+              url: 'https://github.com/bradtaylor/mcp-server-salesforce/issues'
+            };
+            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Build project
+        run: npm run build
+
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create and push git tag
+        if: github.event_name == 'push'
+        run: |
+          NEW_VERSION="${{ steps.version_update.outputs.new_version }}"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+
+      - name: Create GitHub release
+        if: github.event_name == 'push'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version_update.outputs.new_version }}
+          release_name: Release v${{ steps.version_update.outputs.new_version }}
+          body: |
+            Automated release v${{ steps.version_update.outputs.new_version }}
+            
+            ## Changes
+            This release includes the latest changes from the main branch.
+            
+            ## Installation
+            ```bash
+            npm install -g @answerai/mcp-server-salesforce@${{ steps.version_update.outputs.new_version }}
+            ```
+            
+            ## Usage
+            This MCP server provides Salesforce connectivity for Claude and other AI assistants.
+          draft: false
+          prerelease: false 
