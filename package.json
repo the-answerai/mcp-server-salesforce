@@ -1,5 +1,5 @@
 {
-  "name": "@answerai/mcp-server-salesforce",
+  "name": "@answerai/salesforce-mcp",
   "version": "0.0.3",
   "description": "A Salesforce connector MCP Server.",
   "main": "dist/index.js",
