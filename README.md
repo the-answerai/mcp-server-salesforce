@@ -20,7 +20,7 @@ An MCP (Model Context Protocol) server implementation that integrates Claude wit
 ## Installation
 
 ```bash
-npm install -g @answerai/mcp-server-salesforce
+npm install -g @answerai/salesforce-mcp
 ```
 
 ## Tools
@@ -174,7 +174,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["-y", "@answerai/mcp-server-salesforce"],
+      "args": ["-y", "@answerai/salesforce-mcp"],
       "env": {
         "SALESFORCE_CONNECTION_TYPE": "User_Password",
         "SALESFORCE_USERNAME": "your_username",
@@ -193,7 +193,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["-y", "@answerai/mcp-server-salesforce"],
+      "args": ["-y", "@answerai/salesforce-mcp"],
       "env": {
         "SALESFORCE_CONNECTION_TYPE": "OAuth_2.0_Client_Credentials",
         "SALESFORCE_CLIENT_ID": "your_client_id",
@@ -211,7 +211,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["-y", "@answerai/mcp-server-salesforce"],
+      "args": ["-y", "@answerai/salesforce-mcp"],
       "env": {
         "SALESFORCE_CONNECTION_TYPE": "OAuth_2_0_Personal",
         "SALESFORCE_CLIENT_ID": "your_client_id",
@@ -339,10 +339,10 @@ When using Personal OAuth (OAuth_2_0_Personal connection type):
 ### Building from source
 ```bash
 # Clone the repository
-git clone https://github.com/the-answerai/mcp-server-salesforce.git
+git clone https://github.com/the-answerai/salesforce-mcp.git
 
 # Navigate to directory
-cd mcp-server-salesforce
+cd salesforce-mcp
 
 # Install dependencies
 npm install
@@ -358,4 +358,4 @@ Contributions are welcome! Feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Issues and Support
-If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/the-answerai/mcp-server-salesforce/issues).
+If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/the-answerai/salesforce-mcp/issues).

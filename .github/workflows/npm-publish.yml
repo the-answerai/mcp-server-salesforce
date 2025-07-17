@@ -32,12 +32,17 @@ jobs:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # Note: Uncomment this step when tests are added to the project
       # - name: Run tests
-      #   run: npm test
+      #   run: pnpm test
 
       - name: Determine version bump
         id: version_bump
@@ -71,16 +76,16 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
             # Manual version specified
             NEW_VERSION="${{ github.event.inputs.version }}"
-            npm version $NEW_VERSION --no-git-tag-version
+            pnpm version $NEW_VERSION --no-git-tag-version
           elif [ "${{ github.event_name }}" == "release" ]; then
             # Use release tag version
             NEW_VERSION="${{ github.event.release.tag_name }}"
             NEW_VERSION=${NEW_VERSION#v}  # Remove 'v' prefix if present
-            npm version $NEW_VERSION --no-git-tag-version
+            pnpm version $NEW_VERSION --no-git-tag-version
           elif [ "${{ github.event_name }}" == "push" ]; then
             # Auto-bump based on commits
             BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
-            NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version)
+            NEW_VERSION=$(pnpm version $BUMP_TYPE --no-git-tag-version)
             NEW_VERSION=${NEW_VERSION#v}  # Remove 'v' prefix
           fi
           
@@ -92,24 +97,24 @@ jobs:
           # Ensure proper package configuration for publishing
           node -e "
             const pkg = require('./package.json');
-            pkg.name = '@answerai/mcp-server-salesforce';
+            pkg.name = '@answerai/salesforce-mcp';
             pkg.publishConfig = { access: 'public' };
             pkg.repository = {
               type: 'git',
-              url: 'git+https://github.com/bradtaylor/mcp-server-salesforce.git'
+              url: 'git+https://github.com/bradtaylor/salesforce-mcp.git'
             };
-            pkg.homepage = 'https://github.com/bradtaylor/mcp-server-salesforce#readme';
+            pkg.homepage = 'https://github.com/bradtaylor/salesforce-mcp#readme';
             pkg.bugs = {
-              url: 'https://github.com/bradtaylor/mcp-server-salesforce/issues'
+              url: 'https://github.com/bradtaylor/salesforce-mcp/issues'
             };
             require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
           "
 
       - name: Build project
-        run: npm run build
+        run: pnpm run build
 
       - name: Publish to NPM
-        run: npm publish --access public
+        run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -138,7 +143,7 @@ jobs:
             
             ## Installation
             ```bash
-            npm install -g @answerai/mcp-server-salesforce@${{ steps.version_update.outputs.new_version }}
+            npm install -g @answerai/salesforce-mcp@${{ steps.version_update.outputs.new_version }}
             ```
             
             ## Usage
