@@ -20,7 +20,7 @@ An MCP (Model Context Protocol) server implementation that integrates Claude wit
 ## Installation
 
 ```bash
-npm install -g @tsmztech/mcp-server-salesforce
+npm install -g @answerai/mcp-server-salesforce
 ```
 
 ## Tools
@@ -141,7 +141,7 @@ Manage debug logs for Salesforce users:
 ## Setup
 
 ### Salesforce Authentication
-You can connect to Salesforce using one of two authentication methods:
+You can connect to Salesforce using one of three authentication methods:
 
 #### 1. Username/Password Authentication (Default)
 1. Set up your Salesforce credentials
@@ -154,6 +154,16 @@ You can connect to Salesforce using one of two authentication methods:
 4. Save the Client ID and Client Secret
 5. **Important**: Note your instance URL (e.g., `https://your-domain.my.salesforce.com`) as it's required for authentication
 
+#### 3. Personal OAuth Authentication (Server-Side Token Management)
+For automated OAuth token management (recommended for personal use):
+
+1. Create a Connected App in Salesforce
+2. Enable OAuth settings (callback URL not required for server-side token refresh)
+3. Set OAuth scopes: `api`, `id`, `refresh_token`
+4. Save the Client ID and Client Secret
+5. Perform OAuth flow once to get a refresh token (use any valid callback URL during initial setup)
+6. Configure the refresh token in environment variables - the server will automatically refresh access tokens as needed
+
 ### Usage with Claude Desktop
 
 Add to your `claude_desktop_config.json`:
@@ -164,7 +174,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["-y", "@tsmztech/mcp-server-salesforce"],
+      "args": ["-y", "@answerai/mcp-server-salesforce"],
       "env": {
         "SALESFORCE_CONNECTION_TYPE": "User_Password",
         "SALESFORCE_USERNAME": "your_username",
@@ -183,7 +193,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["-y", "@tsmztech/mcp-server-salesforce"],
+      "args": ["-y", "@answerai/mcp-server-salesforce"],
       "env": {
         "SALESFORCE_CONNECTION_TYPE": "OAuth_2.0_Client_Credentials",
         "SALESFORCE_CLIENT_ID": "your_client_id",
@@ -195,7 +205,26 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-> **Note**: For OAuth 2.0 Client Credentials Flow, the `SALESFORCE_INSTANCE_URL` must be your exact Salesforce instance URL (e.g., `https://your-domain.my.salesforce.com`). The token endpoint will be constructed as `<instance_url>/services/oauth2/token`.
+#### For Personal OAuth Authentication:
+```json
+{
+  "mcpServers": {
+    "salesforce": {
+      "command": "npx",
+      "args": ["-y", "@answerai/mcp-server-salesforce"],
+      "env": {
+        "SALESFORCE_CONNECTION_TYPE": "OAuth_2_0_Personal",
+        "SALESFORCE_CLIENT_ID": "your_client_id",
+        "SALESFORCE_CLIENT_SECRET": "your_client_secret",
+        "SALESFORCE_REFRESH_TOKEN": "your_refresh_token",
+        "SALESFORCE_INSTANCE_URL": "https://your-domain.my.salesforce.com"
+      }
+    }
+  }
+}
+```
+
+> **Note**: The server automatically manages access tokens using the configured refresh token. Before each API call, it will refresh the access token if needed, ensuring all operations have valid authentication. No client-side token management is required.
 
 ## Example Usage
 
@@ -290,12 +319,27 @@ Examples with Field Level Security:
 "Configure log level to DEBUG for a user"
 ```
 
+### Automatic OAuth Authentication
+When using Personal OAuth (OAuth_2_0_Personal connection type):
+```
+# All tools work seamlessly without additional parameters
+"Query all accounts"
+"Search for objects related to Customer"
+"Update opportunity records"
+"Get field information for the Account object"
+
+# The server automatically:
+# - Refreshes access tokens before each API call if needed
+# - Handles token expiration transparently
+# - Manages all OAuth complexity server-side
+```
+
 ## Development
 
 ### Building from source
 ```bash
 # Clone the repository
-git clone https://github.com/tsmztech/mcp-server-salesforce.git
+git clone https://github.com/the-answerai/mcp-server-salesforce.git
 
 # Navigate to directory
 cd mcp-server-salesforce
@@ -314,4 +358,4 @@ Contributions are welcome! Feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Issues and Support
-If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/tsmztech/mcp-server-salesforce/issues).
+If you encounter any issues or need support, please file an issue on the [GitHub repository](https://github.com/the-answerai/mcp-server-salesforce/issues).
